@@ -2,9 +2,9 @@ require('dotenv/config');
 
 const config = require('../config'),
   expect = require('chai').expect,
-  helpers = require('./helpers'),
+  awaitLastBlock = require('./helpers/awaitLastBlock'),
+  bytes32 = require('./helpers/bytes32'),
   net = require('net'),
-  path = require('path'),
   require_all = require('require-all'),
   contract = require('truffle-contract'),
   _ = require('lodash'),
@@ -16,10 +16,10 @@ const config = require('../config'),
   Web3 = require('web3'),
   web3 = new Web3(),
   Promise = require('bluebird'),
+  accountModel = require('../models/accountModel'),
   smEvents = require('../controllers/eventsCtrl')(contracts),
   mongoose = require('mongoose');
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 describe('core/sc processor', function () {
 
@@ -30,16 +30,16 @@ describe('core/sc processor', function () {
 
 
     for (let contract_name in contracts)
-      if (contracts.hasOwnProperty(contract_name)) {
-        try {
-          contracts[contract_name].setProvider(provider);
-          contracts[`${contract_name}Instance`] = await contracts[contract_name].deployed();
-        } catch (e) {
+    {if (contracts.hasOwnProperty(contract_name)) {
+      try {
+        contracts[contract_name].setProvider(provider);
+        contracts[`${contract_name}Instance`] = await contracts[contract_name].deployed();
+      } catch (e) {
 
-        }
       }
+    }}
 
-    return await helpers.awaitLastBlock(web3);
+    return await awaitLastBlock(web3);
   });
 
   after(() => {
@@ -73,7 +73,7 @@ describe('core/sc processor', function () {
 
     let accounts = await Promise.promisify(web3.eth.getAccounts)();
     let result = await contracts.AssetsManagerInstance.sendAsset(
-      helpers.bytes32('TIME'), accounts[1], 100, {
+      bytes32('TIME'), accounts[1], 100, {
         from: accounts[0],
         gas: 3000000
       });
@@ -87,7 +87,7 @@ describe('core/sc processor', function () {
     let accounts = await Promise.promisify(web3.eth.getAccounts)();
 
     let result = await smEvents.eventModels.Transfer.findOne({
-      symbol: helpers.bytes32('TIME'),
+      symbol: bytes32('TIME'),
       to: accounts[1]
     });
 
