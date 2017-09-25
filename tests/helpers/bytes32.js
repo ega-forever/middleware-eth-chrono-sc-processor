@@ -3,7 +3,7 @@ const Web3 = require('web3'),
 
 module.exports = stringOrNumber => {
   let zeros = '000000000000000000000000000000000000000000000000000000000000000';
-  if (typeof stringOrNumber === "string") {
+  if (typeof stringOrNumber === 'string') {
     return (web3.toHex(stringOrNumber) + zeros).substr(0, 66);
   }
   let hexNumber = stringOrNumber.toString(16);
