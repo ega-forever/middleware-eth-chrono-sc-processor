@@ -17,14 +17,17 @@
   },
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",
-    "deploy:contracts": "cd ./node_modules/chronobank-smart-contracts && node ./node_modules/truffle/build/cli.bundled.js migrate"
+    "deploy:contracts": "cd ./node_modules/chronobank-smart-contracts && node ../truffle/build/cli.bundled.js migrate",
+    "test": "node ./node_modules/mocha/bin/mocha -t 90000 tests"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "chai": "^4.1.1",
+    "mocha": "^3.5.0",
     "eslint": "^4.6.1",
-    "babel-eslint": "^8.0.0",
+    "middleware-eth-blockprocessor": "github:chronobank/middleware-eth-blockprocessor",
     "eslint-plugin-chronobank": "github:chronobank/eslint-plugin-chronobank"
   }
 }

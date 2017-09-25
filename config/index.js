@@ -11,7 +11,7 @@ const config = {
     network: process.env.NETWORK || 'development',
     uri: `${/^win/.test (process.platform) ? '\\\\.\\pipe\\' : '/tmp/'}${process.env.NETWORK || 'development'}/geth.ipc`
   },
-  smartContracts: {
+  smartContracts: { //todo remove
     events: {
       listen: parseInt(process.env.SMART_CONTRACTS_EVENTS_LISTEN) || false,
       ttl: parseInt(process.env.SMART_CONTRACTS_EVENTS_TTL) || false
