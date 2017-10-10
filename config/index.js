@@ -11,15 +11,11 @@ const config = {
     network: process.env.NETWORK || 'development',
     uri: `${/^win/.test (process.platform) ? '\\\\.\\pipe\\' : '/tmp/'}${process.env.NETWORK || 'development'}/geth.ipc`
   },
-  smartContracts: { //todo remove
+  smartContracts: {
     events: {
-      listen: parseInt(process.env.SMART_CONTRACTS_EVENTS_LISTEN) || false,
       ttl: parseInt(process.env.SMART_CONTRACTS_EVENTS_TTL) || false
     }
-  },
-  transactions: {
-    ttl: parseInt(process.env.TRANSACTION_TTL) || false
-  },
+  }
 };
 
 module.exports = config;
