@@ -1,6 +1,5 @@
 const config = require('./config'),
   mongoose = require('mongoose'),
-  transactionModel = require('./models/transactionModel'),
   accountModel = require('./models/accountModel'),
   Web3 = require('web3'),
   filterTxsBySMEventsService = require('./services/filterTxsBySMEventsService'),
@@ -8,6 +7,7 @@ const config = require('./config'),
   path = require('path'),
   fs = require('fs'),
   _ = require('lodash'),
+  Promise = require('bluebird'),
   requireAll = require('require-all'),
   contract = require('truffle-contract'),
   bunyan = require('bunyan'),
@@ -76,30 +76,24 @@ let init = async () => {
   }
 
   channel.consume('app_eth.chrono_sc_processor', async (data) => {
-    let blockPayload;
-    channel.ack(data);
     try {
-      blockPayload = JSON.parse(data.content.toString());
+      let blockHash = JSON.parse(data.content.toString());
+      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(blockHash);
+
+      let filteredEvents = tx ? await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents) : [];
+
+      for (let event of filteredEvents) {
+        await event.payload.save().catch(() => {
+        });
+
+        event.payload = _.omit(event.payload.toJSON(), ['controlIndexHash', '_id', '__v']);
+        channel.publish('events', `eth_chrono_sc.${event.name.toLowerCase()}`, new Buffer(JSON.stringify(event)));
+      }
     } catch (e) {
       log.error(e);
-      return;
     }
 
-    let tx = await transactionModel.findOne({payload: blockPayload});
-
-    if (!tx)
-    {return;}
-
-    let filtered = await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents);
-
-    await Promise.all(
-      filtered.map(ev => ev.payload.save().catch(() => {
-      }))
-    );
-
-    await Promise.all(filtered.map(event =>
-      channel.publish('events', `eth_chrono_sc.${event.name}`, new Buffer(JSON.stringify(event.payload)))
-    ));
+    channel.ack(data);
 
   });
 
