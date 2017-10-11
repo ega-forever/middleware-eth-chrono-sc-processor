@@ -68,18 +68,18 @@ let init = async () => {
 
   try {
     await channel.assertExchange('events', 'topic', {durable: false});
-    await channel.assertQueue('app_eth.chrono_sc_processor');
-    await channel.bindQueue('app_eth.chrono_sc_processor', 'events', 'eth_transaction.*');
+    await channel.assertQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`);
+    await channel.bindQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`, 'events', `${config.rabbit.serviceName}_transaction.*`);
   } catch (e) {
     log.error(e);
     channel = await conn.createChannel();
   }
 
-  channel.consume('app_eth.chrono_sc_processor', async (data) => {
+  channel.prefetch(2);
+  channel.consume(`app_${config.rabbit.serviceName}.chrono_sc_processor`, async (data) => {
     try {
       let blockHash = JSON.parse(data.content.toString());
       let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(blockHash);
-
       let filteredEvents = tx ? await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents) : [];
 
       for (let event of filteredEvents) {
@@ -87,7 +87,7 @@ let init = async () => {
         });
 
         event.payload = _.omit(event.payload.toJSON(), ['controlIndexHash', '_id', '__v']);
-        channel.publish('events', `eth_chrono_sc.${event.name.toLowerCase()}`, new Buffer(JSON.stringify(event)));
+        channel.publish('events', `${config.rabbit.serviceName}_chrono_sc.${event.name.toLowerCase()}`, new Buffer(JSON.stringify(event)));
       }
     } catch (e) {
       log.error(e);
