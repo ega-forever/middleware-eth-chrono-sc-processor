@@ -18,8 +18,8 @@ const config = require('../config'),
   Promise = require('bluebird'),
   accountModel = require('../models/accountModel'),
   smEvents = require('../controllers/eventsCtrl')(contracts),
+  ctx = {},
   mongoose = require('mongoose');
-
 
 describe('core/sc processor', function () {
 
@@ -29,15 +29,16 @@ describe('core/sc processor', function () {
     mongoose.Promise = Promise;
     mongoose.connect(config.mongo.uri, {useMongoClient: true});
 
-    for (let contract_name in contracts)
-    {if (contracts.hasOwnProperty(contract_name)) {
-      try {
-        contracts[contract_name].setProvider(provider);
-        contracts[`${contract_name}Instance`] = await contracts[contract_name].deployed();
-      } catch (e) {
+    for (let contract_name in contracts) {
+      if (contracts.hasOwnProperty(contract_name)) {
+        try {
+          contracts[contract_name].setProvider(provider);
+          contracts[`${contract_name}Instance`] = await contracts[contract_name].deployed();
+        } catch (e) {
 
+        }
       }
-    }}
+    }
 
     return await awaitLastBlock(web3);
   });
@@ -55,43 +56,29 @@ describe('core/sc processor', function () {
     }
   });
 
-
   it('add TIME Asset', async () => {
 
     let accounts = await Promise.promisify(web3.eth.getAccounts)();
-    let result = await contracts.AssetsManagerInstance.addAsset(
-      contracts.ChronoBankAssetProxyInstance.address, 'TIME', accounts[0], {
+    let result = await contracts.ERC20ManagerInstance.addToken(
+      contracts.ChronoBankAssetProxyInstance.address, 'TOKEN2', 'TOKEN2', '', 2, bytes32('0x0'),bytes32('0x0'), {
         from: accounts[0],
         gas: 3000000
       });
 
     expect(result).to.have.own.property('tx');
-
+    ctx.log = result.logs[0];
+    ctx.log.args = JSON.parse(JSON.stringify(ctx.log.args));
   });
 
-  it('send 100 TIME to owner1 from owner', async () => {
 
-    let accounts = await Promise.promisify(web3.eth.getAccounts)();
-    let result = await contracts.AssetsManagerInstance.sendAsset(
-      bytes32('TIME'), accounts[1], 100, {
-        from: accounts[0],
-        gas: 3000000
-      });
-
-    expect(result).to.have.own.property('tx');
-
-  });
 
   it('validate tx in mongo', async () => {
-    await Promise.delay(10000);
-    let accounts = await Promise.promisify(web3.eth.getAccounts)();
+    await Promise.delay(20000);
+    let result = await smEvents.eventModels[ctx.log.event].findOne(ctx.log.args);
 
-    let result = await smEvents.eventModels.Transfer.findOne({
-      symbol: bytes32('TIME'),
-      to: accounts[1]
-    });
-
-    expect(result).to.have.property('to');
+    expect(result).to.be.an('object');
   });
+
+
 
 });
