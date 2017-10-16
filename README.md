@@ -2,7 +2,7 @@
 
 Middleware service for handling emitted events on chronobank platform
 
-###Installation
+### Installation
 
 This module is a part of middleware services. You can install it in 2 ways:
 
@@ -16,9 +16,9 @@ This module is used for processing events, emitted on chronobank smart contracts
 #### How does it work
 
 This how does it work:
-1) this module register multiAddress (from which events are emitted on chonibank smart contracts) in database in EthAccounts collection
+1) this module register multiAddress (from which events are emitted on chonobank smart contracts) in database in EthAccounts collection
 2) blockprocessor filter transactions by tx.to, tx.from and addresses in logs.
-3) chronoSc processor catch a new tx through rabbitmq, fetch this tx from db and parse it
+3) chronoSc processor catch a new tx through rabbitmq, and parse it
 4) if he find smth inside logs, then chronoSc decode its definition and save to a propriate collection (called by event's name). For instance, we have an event called 'Tranfer'. When a new event is emitted, chronoSc processor catch it, and save to a collection 'transfers'. Also, chronoSc parser send notification via rabbitmq, with the routing key, named as event, but with lowercase - in our case 'transfer', and message - are the raw event's arguments, passed to event.
 
 
@@ -32,8 +32,9 @@ Below is the expamle configuration:
 MONGO_URI=mongodb://localhost:27017/data
 RABBIT_URI=amqp://localhost:5672
 SMART_CONTRACTS_EVENTS_TTL=0
-TRANSACTION_TTL=0
+RABBIT_SERVICE_NAME=app_eth
 NETWORK=development
+WEB3_URI=/tmp/development/geth.ipc
 ```
 
 The options are presented below:
@@ -43,8 +44,9 @@ The options are presented below:
 | MONGO_URI   | the URI string for mongo connection
 | RABBIT_URI   | rabbitmq URI connection string
 | SMART_CONTRACTS_EVENTS_TTL   | how long should we keep events in db (should be set in seconds)
-| TRANSACTION_TTL   | how long should we keep transactions in db (should be set in seconds)
+| RABBIT_SERVICE_NAME   | namespace for all rabbitmq queues, like 'app_eth_transaction'
 | NETWORK   | network name (alias)- is used for connecting via ipc (see block processor section)
+| WEB3_URI   | the path to ipc interface
 
 License
 ----

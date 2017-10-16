@@ -2,18 +2,17 @@ const _ = require('lodash'),
   solidityEvent = require('web3/lib/web3/event.js'),
   config = require('../config');
 
-
 module.exports = async (tx, web3, multiAddress, smEvents) => {
 
   if (_.get(tx, 'logs', []).length === 0)
-  {return [];}
+    return [];
 
   return _.chain(tx.logs)
     .filter(log => multiAddress.address === log.address)
     .map(ev => {
       let signatureDefinition = smEvents.signatures[ev.topics[0]];
       if (!signatureDefinition)
-      {return;}
+        return;
 
       _.pullAt(ev, 0);
       let resultDecoded = new solidityEvent(null, signatureDefinition).decode(ev);
