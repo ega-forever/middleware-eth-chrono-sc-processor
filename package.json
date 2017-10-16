@@ -13,12 +13,12 @@
     "require-all": "^2.2.0",
     "truffle-contract": "^2.0.0",
     "web3": "^0.19.0",
-    "chronobank-smart-contracts": "1.1.35"
+    "chronobank-smart-contracts": "1.1.40"
   },
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",
-    "deploy:contracts": "cd ./node_modules/chronobank-smart-contracts && node ../truffle/build/cli.bundled.js migrate",
-    "test": "node ./node_modules/mocha/bin/mocha -t 90000 tests"
+    "deploy:contracts": "cd ./node_modules/chronobank-smart-contracts && node --max_old_space_size=8000 ../truffle/build/cli.bundled.js migrate",
+    "test": "node ./node_modules/mocha/bin/mocha -t 300000 tests"
   },
   "author": "",
   "license": "ISC",

@@ -40,12 +40,32 @@ mongoose.connect(config.mongo.uri, {useMongoClient: true});
 
 let init = async () => {
 
-  let conn = await amqp.connect(config.rabbit.url);
+  let conn = await amqp.connect(config.rabbit.url)
+    .catch(() => {
+      log.error('rabbitmq is not available!');
+      process.exit(0);
+    });
+
   let channel = await conn.createChannel();
+
+  channel.on('close', () => {
+    log.error('rabbitmq process has finished!');
+    process.exit(0);
+  });
 
   let provider = new Web3.providers.IpcProvider(config.web3.uri, net);
   const web3 = new Web3();
   web3.setProvider(provider);
+
+  web3.currentProvider.connection.on('end', () => {
+    log.error('ipc process has finished!');
+    process.exit(0);
+  });
+
+  web3.currentProvider.connection.on('error', () => {
+    log.error('ipc process has finished!');
+    process.exit(0);
+  });
 
   if (!_.has(contracts, 'MultiEventsHistory')) {
     log.error('smart contracts are not installed!');
@@ -53,37 +73,30 @@ let init = async () => {
   }
 
   contracts.MultiEventsHistory.setProvider(web3.currentProvider);
-  let multiAddress = null;
-  try {
-    multiAddress = await contracts.MultiEventsHistory.deployed();
-  } catch (e) {
-    log.error('smart contracts are not deployed!');
-    return process.exit(1);
-  }
+  let multiAddress = await contracts.MultiEventsHistory.deployed()
+    .catch(() => {
+      log.error('smart contracts are not deployed!');
+      return process.exit(1);
+    });
 
   await accountModel.update({address: multiAddress.address}, {$set: {address: multiAddress.address}}, {
     upsert: true,
     setDefaultsOnInsert: true
   });
 
-  try {
-    await channel.assertExchange('events', 'topic', {durable: false});
-    await channel.assertQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`);
-    await channel.bindQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`, 'events', `${config.rabbit.serviceName}_transaction.*`);
-  } catch (e) {
-    log.error(e);
-    channel = await conn.createChannel();
-  }
+  await channel.assertExchange('events', 'topic', {durable: false});
+  await channel.assertQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`);
+  await channel.bindQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`, 'events', `${config.rabbit.serviceName}_transaction.*`);
 
   channel.prefetch(2);
   channel.consume(`app_${config.rabbit.serviceName}.chrono_sc_processor`, async (data) => {
     try {
-      let blockHash = JSON.parse(data.content.toString());
-      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(blockHash);
+      let block = JSON.parse(data.content.toString());
+      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(block.hash || '');
       let filteredEvents = tx ? await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents) : [];
 
       for (let event of filteredEvents) {
-        await event.payload.save().catch(() => {
+        await event.payload.save().catch((e) => {
         });
 
         event.payload = _.omit(event.payload.toJSON(), ['controlIndexHash', '_id', '__v']);
