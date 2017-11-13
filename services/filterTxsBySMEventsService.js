@@ -1,3 +1,14 @@
+/**
+ * Filtering transactions by smart contract events
+ *
+ * @module services/filterTxsBySMEvents
+ * @param {Object} tx Array of transactions
+ * @param {Object} web3 Instance of Web3
+ * @param {Object} multiAddress Instance of smart contract MultiAddress
+ * @param {Object} smEvents Smart contract events
+ * @returns {array} Array of filtered transactions
+ */
+
 const _ = require('lodash'),
   solidityEvent = require('web3/lib/web3/event.js'),
   config = require('../config');
@@ -26,7 +37,6 @@ module.exports = async (tx, web3, multiAddress, smEvents) => {
         })
         )
         .value();
-
     })
     .value();
 
