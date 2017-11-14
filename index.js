@@ -1,6 +1,9 @@
 /**
- * @module Smart Contract processor
- * @description Middleware service for handling emitted events on chronobank platform
+ * Middleware service for handling emitted events on chronobank platform
+ * @module Chronobank/eth-chrono-sc-processor
+ * @requires models/accountModel
+ * @requires config
+ * @requires services/filterTxsBySMEventsService
  */
 
 const config = require('./config'),
@@ -106,15 +109,13 @@ let init = async () => {
           .catch((e) => {
             log.error(e);
           });
-
+          
       channel.ack(data);
 
     } catch (e) {
       log.error(e);
     }
-
   });
-
 };
 
 module.exports = init();
