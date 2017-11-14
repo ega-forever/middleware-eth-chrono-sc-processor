@@ -1,3 +1,11 @@
+/**
+ * Middleware service for handling emitted events on chronobank platform
+ * @module Chronobank/eth-chrono-sc-processor
+ * @requires models/accountModel
+ * @requires config
+ * @requires services/filterTxsBySMEventsService
+ */
+
 const config = require('./config'),
   mongoose = require('mongoose'),
   accountModel = require('./models/accountModel'),
@@ -29,13 +37,7 @@ if (fs.existsSync(contractsPath)) {
   smEvents = require('./controllers/eventsCtrl')(contracts);
 }
 
-/**
- * @module entry point
- * @description update balances for accounts, which addresses were specified
- * in received transactions from blockParser via amqp
- */
-
-mongoose.Promise = Promise;
+mongoose.Promise = Promise; // Use custom Promises
 mongoose.connect(config.mongo.uri, {useMongoClient: true});
 
 let init = async () => {
@@ -86,30 +88,34 @@ let init = async () => {
 
   await channel.assertExchange('events', 'topic', {durable: false});
   await channel.assertQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`);
-  await channel.bindQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`, 'events', `${config.rabbit.serviceName}_transaction.*`);
+  await channel.bindQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`, 'events', `${config.rabbit.serviceName}_transaction.${multiAddress.address}`);
 
   channel.prefetch(2);
+  
+  // Listen to Rabbit
   channel.consume(`app_${config.rabbit.serviceName}.chrono_sc_processor`, async (data) => {
     try {
       let block = JSON.parse(data.content.toString());
       let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(block.hash || '');
       let filteredEvents = tx ? await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents) : [];
 
-      for (let event of filteredEvents) {
-        await event.payload.save().catch((e) => {
-        });
+      for (let event of filteredEvents)
+        await event.payload.save()
+          .then(() => {
+            // Publish event if record successfully saved
+            event.payload = _.omit(event.payload.toJSON(), ['controlIndexHash', '_id', '__v']);
+            channel.publish('events', `${config.rabbit.serviceName}_chrono_sc.${event.name.toLowerCase()}`, new Buffer(JSON.stringify(event)));
+          })
+          .catch((e) => {
+            log.error(e);
+          });
+          
+      channel.ack(data);
 
-        event.payload = _.omit(event.payload.toJSON(), ['controlIndexHash', '_id', '__v']);
-        channel.publish('events', `${config.rabbit.serviceName}_chrono_sc.${event.name.toLowerCase()}`, new Buffer(JSON.stringify(event)));
-      }
     } catch (e) {
       log.error(e);
     }
-
-    channel.ack(data);
-
   });
-
 };
 
 module.exports = init();
