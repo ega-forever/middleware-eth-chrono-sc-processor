@@ -35,6 +35,7 @@ SMART_CONTRACTS_EVENTS_TTL=0
 RABBIT_SERVICE_NAME=app_eth
 NETWORK=development
 WEB3_URI=/tmp/development/geth.ipc
+SMART_CONTRACTS_PATH=/user/app/node_modules/chronobank-smart-contracts/build/contracts
 ```
 
 The options are presented below:
@@ -47,6 +48,7 @@ The options are presented below:
 | RABBIT_SERVICE_NAME   | namespace for all rabbitmq queues, like 'app_eth_transaction'
 | NETWORK   | network name (alias)- is used for connecting via ipc (see block processor section)
 | WEB3_URI   | the path to ipc interface
+| SMART_CONTRACTS_PATH   | the path to built smart contracts (optional)
 
 License
 ----
