@@ -59,8 +59,8 @@ describe('core/sc processor', function () {
   it('add TIME Asset', async () => {
 
     let accounts = await Promise.promisify(web3.eth.getAccounts)();
-    let result = await contracts.ERC20ManagerInstance.addToken(
-      contracts.ChronoBankAssetProxyInstance.address, 'TOKEN2', 'TOKEN2', '', 2, bytes32('0x0'),bytes32('0x0'), {
+    let result = await contracts.UserManagerInstance.addCBE(
+      accounts[1], 0x0, {
         from: accounts[0],
         gas: 3000000
       });
@@ -70,15 +70,11 @@ describe('core/sc processor', function () {
     ctx.log.args = JSON.parse(JSON.stringify(ctx.log.args));
   });
 
-
-
   it('validate tx in mongo', async () => {
     await Promise.delay(20000);
     let result = await smEvents.eventModels[ctx.log.event].findOne(ctx.log.args);
 
     expect(result).to.be.an('object');
   });
-
-
 
 });

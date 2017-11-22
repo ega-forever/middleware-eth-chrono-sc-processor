@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
-    "bluebird": "^3.5.0",
     "amqplib": "^0.5.1",
+    "bluebird": "^3.5.0",
     "bunyan": "^1.8.10",
+    "chronobank-smart-contracts": "^1.1.42",
     "dotenv": "^4.0.0",
     "lodash": "^4.17.4",
     "mongoose": "^4.11.11",
     "mongoose-long": "^0.1.1",
     "require-all": "^2.2.0",
     "truffle-contract": "^2.0.0",
-    "web3": "^0.19.0",
-    "chronobank-smart-contracts": "1.1.40"
+    "web3": "^0.19.0"
   },
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",

@@ -12,7 +12,6 @@ const config = require('./config'),
   Web3 = require('web3'),
   filterTxsBySMEventsService = require('./services/filterTxsBySMEventsService'),
   net = require('net'),
-  path = require('path'),
   fs = require('fs'),
   _ = require('lodash'),
   Promise = require('bluebird'),
@@ -25,11 +24,10 @@ const config = require('./config'),
 let contracts = {},
   smEvents = {};
 
-let contractsPath = path.join(__dirname, './node_modules', 'chronobank-smart-contracts/build/contracts');
 
-if (fs.existsSync(contractsPath)) {
+if (fs.existsSync(config.smartContracts.path)) {
   contracts = requireAll({ //scan dir for all smartContracts, excluding emitters (except ChronoBankPlatformEmitter) and interfaces
-    dirname: contractsPath,
+    dirname: config.smartContracts.path,
     filter: /(^((ChronoBankPlatformEmitter)|(?!(Emitter|Interface)).)*)\.json$/,
     resolve: Contract => contract(Contract)
   });
