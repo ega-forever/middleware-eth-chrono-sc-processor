@@ -5,6 +5,8 @@
  */
 
 require('dotenv').config();
+const path = require('path');
+
 
 const config = {
   mongo: {
@@ -21,7 +23,8 @@ const config = {
   smartContracts: {
     events: {
       ttl: parseInt(process.env.SMART_CONTRACTS_EVENTS_TTL) || false
-    }
+    },
+    path: process.env.SMART_CONTRACTS_PATH || path.join(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts')
   }
 };
 
