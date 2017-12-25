@@ -1,7 +1,14 @@
 require('dotenv/config');
 
 const config = require('../config'),
-  expect = require('chai').expect,
+  mongoose = require('mongoose'),
+  Promise = require('bluebird');
+
+mongoose.Promise = Promise; // Use custom Promises
+mongoose.connect(config.mongo.data.uri, {useMongoClient: true});
+mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+
+const expect = require('chai').expect,
   awaitLastBlock = require('./helpers/awaitLastBlock'),
   bytes32 = require('./helpers/bytes32'),
   net = require('net'),
@@ -15,19 +22,15 @@ const config = require('../config'),
   }),
   Web3 = require('web3'),
   web3 = new Web3(),
-  Promise = require('bluebird'),
   accountModel = require('../models/accountModel'),
   smEvents = require('../controllers/eventsCtrl')(contracts),
-  ctx = {},
-  mongoose = require('mongoose');
+  ctx = {};
 
 describe('core/sc processor', function () {
 
   before(async () => {
     let provider = new Web3.providers.IpcProvider(config.web3.uri, net);
     web3.setProvider(provider);
-    mongoose.Promise = Promise;
-    mongoose.connect(config.mongo.uri, {useMongoClient: true});
 
     for (let contract_name in contracts) {
       if (contracts.hasOwnProperty(contract_name)) {
