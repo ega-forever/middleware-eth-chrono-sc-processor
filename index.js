@@ -29,16 +29,6 @@ const accountModel = require('./models/accountModel'),
 let contracts = {},
   smEvents = {};
 
-if (fs.existsSync(config.smartContracts.path)) {
-  contracts = requireAll({ //scan dir for all smartContracts, excluding emitters (except ChronoBankPlatformEmitter) and interfaces
-    dirname: config.smartContracts.path,
-    filter: /(^((ChronoBankPlatformEmitter)|(?!(Emitter|Interface)).)*)\.json$/,
-    resolve: Contract => contract(Contract)
-  });
-
-  smEvents = require('./controllers/eventsCtrl')(contracts);
-}
-
 [mongoose.accounts, mongoose.connection].forEach(connection =>
   connection.on('disconnected', function () {
     log.error('mongo disconnected!');
@@ -74,6 +64,20 @@ let init = async () => {
     log.error('ipc process has finished!');
     process.exit(0);
   });
+
+  if (fs.existsSync(config.smartContracts.path)) {
+    contracts = requireAll({ //scan dir for all smartContracts, excluding emitters (except ChronoBankPlatformEmitter) and interfaces
+      dirname: config.smartContracts.path,
+      filter: /(^((ChronoBankPlatformEmitter)|(?!(Emitter|Interface)).)*)\.json$/,
+      resolve: Contract => contract(Contract)
+    });
+
+    let version = await Promise.promisify(web3.version.getNetwork)();
+
+    smEvents = require('./controllers/eventsCtrl')(version, contracts);
+
+  }
+
 
   if (!_.has(contracts, 'MultiEventsHistory')) {
     log.error('smart contracts are not installed!');
