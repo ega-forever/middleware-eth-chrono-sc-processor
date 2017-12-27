@@ -7,9 +7,6 @@
  */
 
 const _ = require('lodash'),
-  utils = require('web3/lib/utils/utils.js'),
-  Web3 = require('web3'),
-  web3 = new Web3(),
   config = require('../config'),
   mongoose = require('mongoose');
 
@@ -18,24 +15,32 @@ const _ = require('lodash'),
  * @param  {array} contracts Instances of smartContracts
  * @return {Object}          {eventModels, signatures}
  */
-module.exports = (contracts) => {
+module.exports = (version, contracts) => {
 
-  let eventModels = _.chain(contracts)
+  let events = _.chain(contracts)
     .map(value => //fetch all events
-      _.chain(value).get('abi')
-        .filter({type: 'event'})
-        .value()
+      _.get(value, `networks.${version}.events`)
     )
-    .flatten()
+    .transform((result, evs)=>_.merge(result, evs), {})
+    .value();
+
+
+  let eventModels = _.chain(events)
+    .toPairs()
+    .map(pair => ({
+      address: pair[0],
+      inputs: pair[1].inputs,
+      name: pair[1].name
+    }))
     .groupBy('name')
     .map(ev => ({
-      name: ev[0].name,
-      inputs: _.chain(ev)
-        .map(ev => ev.inputs)
-        .flattenDeep()
-        .uniqBy('name')
-        .value()
-    })
+        name: ev[0].name,
+        inputs: _.chain(ev)
+          .map(ev => ev.inputs)
+          .flattenDeep()
+          .uniqBy('name')
+          .value()
+      })
     )
     .transform((result, ev) => { //build mongo model, based on event definition from abi
 
@@ -57,15 +62,6 @@ module.exports = (contracts) => {
     }, {})
     .value();
 
-  let signatures = _.chain(contracts) //transform event definition to the following object {encoded_event_signature: event_definition}
-    .values()
-    .map(c => c.abi)
-    .flattenDeep()
-    .filter({type: 'event'})
-    .transform((result, ev) => {
-      result[web3.sha3(utils.transformToFullName(ev))] = ev;
-    }, {})
-    .value();
+  return {events, eventModels};
 
-  return {eventModels, signatures};
 };
