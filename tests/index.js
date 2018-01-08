@@ -1,7 +1,14 @@
 require('dotenv/config');
 
 const config = require('../config'),
-  expect = require('chai').expect,
+  mongoose = require('mongoose'),
+  Promise = require('bluebird');
+
+mongoose.Promise = Promise; // Use custom Promises
+mongoose.connect(config.mongo.data.uri, {useMongoClient: true});
+mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+
+const expect = require('chai').expect,
   awaitLastBlock = require('./helpers/awaitLastBlock'),
   bytes32 = require('./helpers/bytes32'),
   net = require('net'),
@@ -15,19 +22,17 @@ const config = require('../config'),
   }),
   Web3 = require('web3'),
   web3 = new Web3(),
-  Promise = require('bluebird'),
   accountModel = require('../models/accountModel'),
-  smEvents = require('../controllers/eventsCtrl')(contracts),
-  ctx = {},
-  mongoose = require('mongoose');
+  ctx = {};
 
 describe('core/sc processor', function () {
 
   before(async () => {
     let provider = new Web3.providers.IpcProvider(config.web3.uri, net);
     web3.setProvider(provider);
-    mongoose.Promise = Promise;
-    mongoose.connect(config.mongo.uri, {useMongoClient: true});
+
+    let version = await Promise.promisify(web3.version.getNetwork)();
+    ctx.smEvents = require('../controllers/eventsCtrl')(version, contracts);
 
     for (let contract_name in contracts) {
       if (contracts.hasOwnProperty(contract_name)) {
@@ -72,7 +77,7 @@ describe('core/sc processor', function () {
 
   it('validate tx in mongo', async () => {
     await Promise.delay(20000);
-    let result = await smEvents.eventModels[ctx.log.event].findOne(ctx.log.args);
+    let result = await ctx.smEvents.eventModels[ctx.log.event].findOne(ctx.log.args);
 
     expect(result).to.be.an('object');
   });

@@ -7,14 +7,19 @@
  */
 
 const config = require('./config'),
-  mongoose = require('mongoose'),
-  accountModel = require('./models/accountModel'),
+  Promise = require('bluebird'),
+  mongoose = require('mongoose');
+
+mongoose.Promise = Promise; // Use custom Promises
+mongoose.connect(config.mongo.data.uri, {useMongoClient: true});
+mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+
+const accountModel = require('./models/accountModel'),
   Web3 = require('web3'),
   filterTxsBySMEventsService = require('./services/filterTxsBySMEventsService'),
   net = require('net'),
   fs = require('fs'),
   _ = require('lodash'),
-  Promise = require('bluebird'),
   requireAll = require('require-all'),
   contract = require('truffle-contract'),
   bunyan = require('bunyan'),
@@ -24,25 +29,12 @@ const config = require('./config'),
 let contracts = {},
   smEvents = {};
 
-
-if (fs.existsSync(config.smartContracts.path)) {
-  contracts = requireAll({ //scan dir for all smartContracts, excluding emitters (except ChronoBankPlatformEmitter) and interfaces
-    dirname: config.smartContracts.path,
-    filter: /(^((ChronoBankPlatformEmitter)|(?!(Emitter|Interface)).)*)\.json$/,
-    resolve: Contract => contract(Contract)
-  });
-
-  smEvents = require('./controllers/eventsCtrl')(contracts);
-}
-
-mongoose.Promise = Promise; // Use custom Promises
-mongoose.connect(config.mongo.uri, {useMongoClient: true});
-
-mongoose.connection.on('disconnected', function () {
-  log.error('mongo disconnected!');
-  process.exit(0);
-});
-
+[mongoose.accounts, mongoose.connection].forEach(connection =>
+  connection.on('disconnected', function () {
+    log.error('mongo disconnected!');
+    process.exit(0);
+  })
+);
 
 let init = async () => {
 
@@ -73,6 +65,20 @@ let init = async () => {
     process.exit(0);
   });
 
+  if (fs.existsSync(config.smartContracts.path)) {
+    contracts = requireAll({ //scan dir for all smartContracts, excluding emitters (except ChronoBankPlatformEmitter) and interfaces
+      dirname: config.smartContracts.path,
+      filter: /(^((ChronoBankPlatformEmitter)|(?!(Emitter|Interface)).)*)\.json$/,
+      resolve: Contract => contract(Contract)
+    });
+
+    let version = await Promise.promisify(web3.version.getNetwork)();
+
+    smEvents = require('./controllers/eventsCtrl')(version, contracts);
+
+  }
+
+
   if (!_.has(contracts, 'MultiEventsHistory')) {
     log.error('smart contracts are not installed!');
     return process.exit(1);
@@ -95,7 +101,7 @@ let init = async () => {
   await channel.bindQueue(`app_${config.rabbit.serviceName}.chrono_sc_processor`, 'events', `${config.rabbit.serviceName}_transaction.${multiAddress.address}`);
 
   channel.prefetch(2);
-  
+
   // Listen to Rabbit
   channel.consume(`app_${config.rabbit.serviceName}.chrono_sc_processor`, async (data) => {
     try {
@@ -113,7 +119,7 @@ let init = async () => {
           .catch((e) => {
             log.error(e);
           });
-          
+
       channel.ack(data);
 
     } catch (e) {
