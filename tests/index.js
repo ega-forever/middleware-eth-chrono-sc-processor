@@ -10,40 +10,37 @@ mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
 
 const expect = require('chai').expect,
   awaitLastBlock = require('./helpers/awaitLastBlock'),
+  saveAccountForAddress = require('./helpers/saveAccountForAddress'),
+  clearQueues = require('./helpers/clearQueues'),
+  connectToQueue = require('./helpers/connectToQueue'),
+  consumeMessages = require('./helpers/consumeMessages'),
+  loadContracts = require('./helpers/loadContracts'),
+  executeAddCBE = require('./helpers/executeAddCBE'),
   bytes32 = require('./helpers/bytes32'),
   net = require('net'),
   require_all = require('require-all'),
   contract = require('truffle-contract'),
   _ = require('lodash'),
-  contracts = require_all({
-    dirname: _.nth(require.resolve('chronobank-smart-contracts/build/contracts/MultiEventsHistory').match(/.+(?=MultiEventsHistory)/), 0),
-    filter: /(^((ChronoBankPlatformEmitter)|(?!(Emitter|Interface)).)*)\.json$/,
-    resolve: Contract => contract(Contract)
-  }),
   Web3 = require('web3'),
   web3 = new Web3(),
-  accountModel = require('../models/accountModel'),
-  ctx = {};
+  amqp = require('amqplib'),
+  accountModel = require('../models/accountModel');
+
+let accounts, amqpInstance, ctx;
 
 describe('core/sc processor', function () {
 
   before(async () => {
-    let provider = new Web3.providers.IpcProvider(config.web3.uri, net);
+    amqpInstance = await amqp.connect(config.rabbit.url);
+    await clearQueues(amqpInstance);
+
+    const provider = new Web3.providers.IpcProvider(config.web3.uri, net);
     web3.setProvider(provider);
 
-    let version = await Promise.promisify(web3.version.getNetwork)();
-    ctx.smEvents = require('../controllers/eventsCtrl')(version, contracts);
+    ctx = await loadContracts(web3, provider);
 
-    for (let contract_name in contracts) {
-      if (contracts.hasOwnProperty(contract_name)) {
-        try {
-          contracts[contract_name].setProvider(provider);
-          contracts[`${contract_name}Instance`] = await contracts[contract_name].deployed();
-        } catch (e) {
-
-        }
-      }
-    }
+    accounts = await Promise.promisify(web3.eth.getAccounts)();
+    await saveAccountForAddress(accounts[0]);
 
     return await awaitLastBlock(web3);
   });
@@ -53,33 +50,67 @@ describe('core/sc processor', function () {
     return mongoose.disconnect();
   });
 
-  it('add account to mongo', async () => {
-    let accounts = await Promise.promisify(web3.eth.getAccounts)();
-    try {
-      await new accountModel({address: accounts[0]}).save();
-    } catch (e) {
-    }
+  afterEach(async () => {
+    await clearQueues(amqpInstance);
   });
 
-  it('add TIME Asset', async () => {
+  it('execute twoCBE and validate event in mongo and structure', async () => {
+      const prevTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
+      const prevHash = prevTx.logs[0].transactionHash;
 
-    let accounts = await Promise.promisify(web3.eth.getAccounts)();
-    let result = await contracts.UserManagerInstance.addCBE(
-      accounts[1], 0x0, {
-        from: accounts[0],
-        gas: 3000000
+      const smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
+      await Promise.delay(10000);
+      await Promise.mapSeries(smartTx.logs, async(log) => {
+        const controlIndexHash =  `${log.logIndex}:${prevHash}:${web3.sha3(config.web3.network)}`;        
+        const mongoDoc = await ctx.smEvents.eventModels[log.event].findOne({
+          controlIndexHash
+        });
+        expect(mongoDoc).to.not.be.null;
+        expect(mongoDoc).to.be.an('object');
+        expect(mongoDoc.toObject()).to.contain.all.keys(_.merge(
+            _.keys(log.args), [
+              'network', 'created', 'controlIndexHash', '_id', '__v',
+            ]
+        )); 
       });
-
-    expect(result).to.have.own.property('tx');
-    ctx.log = result.logs[0];
-    ctx.log.args = JSON.parse(JSON.stringify(ctx.log.args));
+      
   });
 
-  it('validate tx in mongo', async () => {
-    await Promise.delay(20000);
-    let result = await ctx.smEvents.eventModels[ctx.log.event].findOne(ctx.log.args);
+  it('execute twoCBE and validate event in mongo and structure', async () => {
 
-    expect(result).to.be.an('object');
-  });
+    const checkPayload = (payload, log) => {
+      expect(payload).to.not.be.null;
+      expect(payload).to.be.an('object');
+      expect(payload).to.contain.all.keys([
+            'network', 'created', 'self'
+      ]);
+
+      if (payload.self === log.args.self) {
+        expect(payload).to.contain.all.keys(_.keys(log.args));
+      }
+    }
+
+    let smartTx, log;
+
+    await Promise.all([
+      (async() => {
+        smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
+        log = smartTx.logs[0];
+      })(),
+      (async () => {
+        const channel = await amqpInstance.createChannel();
+        await connectToQueue(channel);
+        await consumeMessages(2, channel, async(message) => {
+            data = JSON.parse(message.content);
+            expect(data.name).to.be.oneOf(['Done', 'Error']);
+            expect(data.payload, log);
+        });
+      })()
+    ]);
+
+
+});
+
+
 
 });
