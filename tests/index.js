@@ -13,7 +13,7 @@ const expect = require('chai').expect,
   saveAccountForAddress = require('./helpers/saveAccountForAddress'),
   clearQueues = require('./helpers/clearQueues'),
   connectToQueue = require('./helpers/connectToQueue'),
-  consumeMessages = require('./helpers/consumeMessages'),
+  consumeMessagesUntil = require('./helpers/consumeMessagesUntil'),
   loadContracts = require('./helpers/loadContracts'),
   executeAddCBE = require('./helpers/executeAddCBE'),
   bytes32 = require('./helpers/bytes32'),
@@ -23,8 +23,7 @@ const expect = require('chai').expect,
   _ = require('lodash'),
   Web3 = require('web3'),
   web3 = new Web3(),
-  amqp = require('amqplib'),
-  accountModel = require('../models/accountModel');
+  amqp = require('amqplib');
 
 let accounts, amqpInstance, ctx;
 
@@ -85,9 +84,7 @@ describe('core/sc processor', function () {
             'network', 'created', 'self'
       ]);
 
-      if (payload.self === log.args.self) {
-        expect(payload).to.contain.all.keys(_.keys(log.args));
-      }
+      expect(payload).to.contain.all.keys(_.keys(log.args));
     }
 
     let smartTx, log;
@@ -100,10 +97,12 @@ describe('core/sc processor', function () {
       (async () => {
         const channel = await amqpInstance.createChannel();
         await connectToQueue(channel);
-        await consumeMessages(2, channel, async(message) => {
+        await consumeMessagesUntil(channel, async(message, res) => {
             data = JSON.parse(message.content);
-            expect(data.name).to.be.oneOf(['Done', 'Error']);
-            expect(data.payload, log);
+            if (data.name === log.event)  {
+              checkPayload(data.payload, log);
+              res();
+            }
         });
       })()
     ]);
