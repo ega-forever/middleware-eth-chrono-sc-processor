@@ -106,7 +106,7 @@ let init = async () => {
   channel.consume(`app_${config.rabbit.serviceName}.chrono_sc_processor`, async (data) => {
     try {
       let block = JSON.parse(data.content.toString());
-      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(block.hash || '');
+      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(block.hash || '').timeout(60000);
       let filteredEvents = tx ? await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents) : [];
 
       for (let event of filteredEvents)
