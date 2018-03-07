@@ -72,12 +72,9 @@ let init = async () => {
       resolve: Contract => contract(Contract)
     });
 
-    let version = await Promise.promisify(web3.version.getNetwork)();
-
-    smEvents = require('./controllers/eventsCtrl')(version, contracts);
+    smEvents = require('./controllers/eventsCtrl')(contracts);
 
   }
-
 
   if (!_.has(contracts, 'MultiEventsHistory')) {
     log.error('smart contracts are not installed!');

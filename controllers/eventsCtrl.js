@@ -15,15 +15,13 @@ const _ = require('lodash'),
  * @param  {array} contracts Instances of smartContracts
  * @return {Object}          {eventModels, signatures}
  */
-module.exports = (version, contracts) => {
+module.exports = (contracts) => {
 
   let events = _.chain(contracts)
-    .map(value => //fetch all events
-      _.get(value, `networks.${version}.events`)
-    )
-    .transform((result, evs)=>_.merge(result, evs), {})
+    .toPairs()
+    .map(pair=>pair[1].events)
+    .transform((result, ev)=>_.merge(result, ev))
     .value();
-
 
   let eventModels = _.chain(events)
     .toPairs()
