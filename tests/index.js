@@ -51,23 +51,34 @@ describe('core/sc processor', function () {
   });
 
   it('execute twoCBE and validate event in mongo and structure', async () => {
-    const prevTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
-    const prevHash = prevTx.logs[0].transactionHash;
 
-    const smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
+    let smartTx, log;
 
-    await Promise.delay(20000);
-    await Promise.mapSeries(smartTx.logs, async (log) => {
-      const controlIndexHash = `${log.logIndex}:${prevHash}:${web3.sha3(config.web3.network)}`;
-      const mongoDoc = await ctx.smEvents.eventModels[log.event].findOne({controlIndexHash});
-      expect(mongoDoc).to.not.be.null;
-      expect(mongoDoc).to.be.an('object');
-      expect(mongoDoc.toObject()).to.contain.all.keys(_.merge(
-        _.keys(log.args), [
-          'network', 'created', 'controlIndexHash', '_id', '__v',
-        ]
-      ));
-    });
+    return await Promise.all([
+      (async () => {
+        smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
+        log = smartTx.logs[0];
+      })(),
+      (async () => {
+        const channel = await amqpInstance.createChannel();
+        await connectToQueue(channel);
+        await consumeMessagesUntil(channel, async (message, res) => {
+          let data = JSON.parse(message.content);
+          if (data.name === log.event) {
+            const controlIndexHash = `${log.logIndex}:${log.transactionHash}:${web3.sha3(config.web3.network)}`;
+            const mongoDoc = await ctx.smEvents.eventModels[log.event].findOne({controlIndexHash});
+            expect(mongoDoc).to.not.be.null;
+            expect(mongoDoc).to.be.an('object');
+            expect(mongoDoc.toObject()).to.contain.all.keys(_.merge(
+              _.keys(log.args), [
+                'network', 'created', 'controlIndexHash', '_id', '__v',
+              ]
+            ));
+            res();
+          }
+        });
+      })()
+    ]);
 
   });
 
@@ -104,4 +115,5 @@ describe('core/sc processor', function () {
     ]);
 
   });
+
 });
