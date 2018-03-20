@@ -56,7 +56,7 @@ describe('core/sc processor', function () {
 
     const smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
 
-    await Promise.delay(10000);
+    await Promise.delay(20000);
     await Promise.mapSeries(smartTx.logs, async (log) => {
       const controlIndexHash = `${log.logIndex}:${prevHash}:${web3.sha3(config.web3.network)}`;
       const mongoDoc = await ctx.smEvents.eventModels[log.event].findOne({controlIndexHash});
