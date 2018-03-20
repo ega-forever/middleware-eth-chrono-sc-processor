@@ -32,13 +32,13 @@ module.exports = (contracts) => {
     }))
     .groupBy('name')
     .map(ev => ({
-        name: ev[0].name,
-        inputs: _.chain(ev)
-          .map(ev => ev.inputs)
-          .flattenDeep()
-          .uniqBy('name')
-          .value()
-      })
+      name: ev[0].name,
+      inputs: _.chain(ev)
+        .map(ev => ev.inputs)
+        .flattenDeep()
+        .uniqBy('name')
+        .value()
+    })
     )
     .transform((result, ev) => { //build mongo model, based on event definition from abi
 
