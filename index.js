@@ -119,8 +119,12 @@ let init = async () => {
 
       channel.ack(data);
 
-    } catch (e) {
-      log.error(e);
+    } catch (err) {
+      log.error(err);
+      if (err && err.code !== 11000) {
+        await Promise.delay(1000);
+        channel.nack(data);
+      }
     }
   });
 };
