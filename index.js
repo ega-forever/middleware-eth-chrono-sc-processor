@@ -1,4 +1,10 @@
 /**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Egor Zuev <zyev.egor@gmail.com>
+ */
+
+/**
  * Middleware service for handling emitted events on chronobank platform
  * @module Chronobank/eth-chrono-sc-processor
  * @requires models/accountModel
