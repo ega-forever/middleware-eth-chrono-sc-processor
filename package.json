@@ -20,8 +20,8 @@
     "deploy:contracts": "cd ./node_modules/chronobank-smart-contracts && node --max_old_space_size=8000 ../truffle/build/cli.bundled.js migrate",
     "test": "node ./node_modules/mocha/bin/mocha -t 300000 tests"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "chronobank",
+  "license": "AGPL-3.0",
   "description": "",
   "devDependencies": {
     "babel-eslint": "^8.2.2",
