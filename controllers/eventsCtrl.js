@@ -1,4 +1,10 @@
 /**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Egor Zuev <zyev.egor@gmail.com>
+ */
+
+/**
  * Initialize all events for smartContracts
  * @module controllers/events
  * @requires utils/transformToFullName
@@ -15,15 +21,13 @@ const _ = require('lodash'),
  * @param  {array} contracts Instances of smartContracts
  * @return {Object}          {eventModels, signatures}
  */
-module.exports = (version, contracts) => {
+module.exports = (contracts) => {
 
   let events = _.chain(contracts)
-    .map(value => //fetch all events
-      _.get(value, `networks.${version}.events`)
-    )
-    .transform((result, evs)=>_.merge(result, evs), {})
+    .toPairs()
+    .map(pair=>pair[1].events)
+    .transform((result, ev)=>_.merge(result, ev))
     .value();
-
 
   let eventModels = _.chain(events)
     .toPairs()
@@ -34,13 +38,13 @@ module.exports = (version, contracts) => {
     }))
     .groupBy('name')
     .map(ev => ({
-        name: ev[0].name,
-        inputs: _.chain(ev)
-          .map(ev => ev.inputs)
-          .flattenDeep()
-          .uniqBy('name')
-          .value()
-      })
+      name: ev[0].name,
+      inputs: _.chain(ev)
+        .map(ev => ev.inputs)
+        .flattenDeep()
+        .uniqBy('name')
+        .value()
+    })
     )
     .transform((result, ev) => { //build mongo model, based on event definition from abi
 

@@ -1,4 +1,10 @@
 /**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Egor Zuev <zyev.egor@gmail.com>
+ */
+
+/**
  * Middleware service for handling emitted events on chronobank platform
  * @module Chronobank/eth-chrono-sc-processor
  * @requires models/accountModel
@@ -72,12 +78,9 @@ let init = async () => {
       resolve: Contract => contract(Contract)
     });
 
-    let version = await Promise.promisify(web3.version.getNetwork)();
-
-    smEvents = require('./controllers/eventsCtrl')(version, contracts);
+    smEvents = require('./controllers/eventsCtrl')(contracts);
 
   }
-
 
   if (!_.has(contracts, 'MultiEventsHistory')) {
     log.error('smart contracts are not installed!');
@@ -106,7 +109,7 @@ let init = async () => {
   channel.consume(`app_${config.rabbit.serviceName}.chrono_sc_processor`, async (data) => {
     try {
       let block = JSON.parse(data.content.toString());
-      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(block.hash || '');
+      let tx = await Promise.promisify(web3.eth.getTransactionReceipt)(block.hash || '').timeout(60000);
       let filteredEvents = tx ? await filterTxsBySMEventsService(tx, web3, multiAddress, smEvents) : [];
 
       for (let event of filteredEvents)
@@ -122,8 +125,12 @@ let init = async () => {
 
       channel.ack(data);
 
-    } catch (e) {
-      log.error(e);
+    } catch (err) {
+      log.error(err);
+      if (err && err.code !== 11000) {
+        await Promise.delay(1000);
+        channel.nack(data);
+      }
     }
   });
 };

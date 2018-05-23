@@ -1,4 +1,10 @@
 /**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Egor Zuev <zyev.egor@gmail.com>
+ */
+
+/**
  * Filtering transactions by smart contract events
  *
  * @module services/filterTxsBySMEvents
@@ -33,9 +39,9 @@ module.exports = async (tx, web3, multiAddress, smEvents) => {
         .pick(['event', 'args'])
         .merge({args: {controlIndexHash: `${ev.logIndex}:${ev.transactionHash}:${web3.sha3(config.web3.network)}`}})
         .thru(ev => ({
-            name: ev.event,
-            payload: new smEvents.eventModels[ev.event](_.merge(ev.args, {network: config.web3.network}))
-          })
+          name: ev.event,
+          payload: new smEvents.eventModels[ev.event](_.merge(ev.args, {network: config.web3.network}))
+        })
         )
         .value()
       );
