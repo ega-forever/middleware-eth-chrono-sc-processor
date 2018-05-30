@@ -58,7 +58,6 @@ module.exports = (contracts) => {
           }, {})
           .merge({
             controlIndexHash: {type: String, unique: true, required: true},
-            network: {type: String},
             created: {type: Date, required: true, default: Date.now, expires: config.smartContracts.events.ttl}
           })
           .value()
