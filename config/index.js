@@ -36,7 +36,8 @@ const config = {
     events: {
       ttl: parseInt(process.env.SMART_CONTRACTS_EVENTS_TTL) || false
     },
-    path: process.env.SMART_CONTRACTS_PATH || path.join(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts')
+    path: process.env.SMART_CONTRACTS_PATH || path.join(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
+    eventContract: process.env.SMART_CONTRACTS_EVENT_CONTRACT || 'MultiEventsHistory'
   }
 };
 

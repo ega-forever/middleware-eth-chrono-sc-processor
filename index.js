@@ -82,13 +82,13 @@ let init = async () => {
 
   }
 
-  if (!_.has(contracts, 'MultiEventsHistory')) {
+  if (!_.has(contracts, config.smartContracts.eventContract)) {
     log.error('smart contracts are not installed!');
     return process.exit(1);
   }
 
-  contracts.MultiEventsHistory.setProvider(web3.currentProvider);
-  let multiAddress = await contracts.MultiEventsHistory.deployed()
+  contracts[config.smartContracts.eventContract].setProvider(web3.currentProvider);
+  let multiAddress = await contracts[config.smartContracts.eventContract].deployed()
     .catch(() => {
       log.error('smart contracts are not deployed!');
       return process.exit(1);
