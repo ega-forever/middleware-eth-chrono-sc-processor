@@ -16,8 +16,7 @@
  */
 
 const _ = require('lodash'),
-  solidityEvent = require('web3/lib/web3/event.js'),
-  config = require('../config');
+  solidityEvent = require('web3/lib/web3/event.js');
 
 module.exports = async (tx, web3, multiAddress, smEvents) => {
 
@@ -37,10 +36,10 @@ module.exports = async (tx, web3, multiAddress, smEvents) => {
 
       result.push(_.chain(resultDecoded)
         .pick(['event', 'args'])
-        .merge({args: {controlIndexHash: `${ev.logIndex}:${ev.transactionHash}:${web3.sha3(config.web3.network)}`}})
+        .merge({args: {controlIndexHash: `${ev.logIndex}:${ev.transactionHash}`}})
         .thru(ev => ({
           name: ev.event,
-          payload: new smEvents.eventModels[ev.event](_.merge(ev.args, {network: config.web3.network}))
+          payload: new smEvents.eventModels[ev.event](ev.args)
         })
         )
         .value()
