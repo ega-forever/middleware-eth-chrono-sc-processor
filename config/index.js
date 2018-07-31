@@ -28,14 +28,8 @@ const config = {
     url: process.env.RABBIT_URI || 'amqp://localhost:5672',
     serviceName: process.env.RABBIT_SERVICE_NAME || 'app_eth'
   },
-  web3: {
-    network: process.env.NETWORK || 'development',
-    uri: `${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${process.env.WEB3_URI || `/tmp/${(process.env.NETWORK || 'development')}/geth.ipc`}`
-  },
   smartContracts: {
-    events: {
-      ttl: parseInt(process.env.SMART_CONTRACTS_EVENTS_TTL) || false
-    },
+    networkId: process.env.SMART_CONTRACTS_NETWORK_ID || '4',
     path: process.env.SMART_CONTRACTS_PATH || path.join(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
     eventContract: process.env.SMART_CONTRACTS_EVENT_CONTRACT || 'MultiEventsHistory'
   }

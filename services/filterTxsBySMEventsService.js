@@ -16,15 +16,16 @@
  */
 
 const _ = require('lodash'),
+  smEvents = require('../factories/sc/smartContractsEventsFactory'),
   solidityEvent = require('web3/lib/web3/event.js');
 
-module.exports = async (tx, web3, multiAddress, smEvents) => {
+module.exports = async (tx) => {
 
   if (_.get(tx, 'logs', []).length === 0)
     return [];
 
   return _.chain(tx.logs)
-    .filter(log => multiAddress.address === log.address)
+    .filter(log => smEvents.address === log.address)
     .transform((result, ev) => {
 
       let signatureDefinition = smEvents.events[ev.topics[0]];
@@ -34,17 +35,11 @@ module.exports = async (tx, web3, multiAddress, smEvents) => {
       _.pullAt(ev, 0);
       let resultDecoded = new solidityEvent(null, signatureDefinition).decode(ev);
 
-      result.push(_.chain(resultDecoded)
-        .pick(['event', 'args'])
-        .merge({args: {controlIndexHash: `${ev.logIndex}:${ev.transactionHash}`}})
-        .thru(ev => ({
-          name: ev.event,
-          payload: new smEvents.eventModels[ev.event](ev.args)
-        })
-        )
-        .value()
-      );
+      result.push({
+        name: resultDecoded.event,
+        payload: new smEvents.eventModels[ev.event](ev.args)
+      })
+
     }, [])
     .value();
-
 };
