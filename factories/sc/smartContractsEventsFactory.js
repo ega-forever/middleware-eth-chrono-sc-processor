@@ -1,3 +1,9 @@
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ * @author Egor Zuev <zyev.egor@gmail.com>
+ */
+
 const _ = require('lodash'),
   contract = require('truffle-contract'),
   requireAll = require('require-all'),
@@ -53,6 +59,9 @@ module.exports = {
   events: _.chain(truffleContractEvents)
     .union(rawContractEvents)
     .uniqBy('signature')
+    .transform((result, item)=>{
+      result[item.signature] = item;
+    }, {})
     .value(),
   address: multiEventHistoryAddress
 };

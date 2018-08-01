@@ -4,22 +4,18 @@
  * @author Egor Zuev <zyev.egor@gmail.com>
  */
 
-/**
- * Filtering transactions by smart contract events
- *
- * @module services/filterTxsBySMEvents
- * @param {Object} tx Array of transactions
- * @param {Object} web3 Instance of Web3
- * @param {Object} multiAddress Instance of smart contract MultiAddress
- * @param {Object} smEvents Smart contract events
- * @returns {array} Array of filtered transactions
- */
-
 const _ = require('lodash'),
   smEvents = require('../factories/sc/smartContractsEventsFactory'),
   solidityEvent = require('web3/lib/web3/event.js');
 
-module.exports = async (tx) => {
+/**
+ * Filtering transactions by smart contract events
+ *
+ * @module services/filterTxsBySMEvents
+ * @param {Object} tx - full eth transaction object (which is confirmed and includes logs)
+ * @returns {array} Array of decoded events, extracted from logs
+ */
+module.exports = tx => {
 
   if (_.get(tx, 'logs', []).length === 0)
     return [];
@@ -37,8 +33,8 @@ module.exports = async (tx) => {
 
       result.push({
         name: resultDecoded.event,
-        payload: new smEvents.eventModels[ev.event](ev.args)
-      })
+        payload: ev.args
+      });
 
     }, [])
     .value();

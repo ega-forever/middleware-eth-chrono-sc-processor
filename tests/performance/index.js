@@ -10,6 +10,7 @@ const _ = require('lodash'),
   filterTxsBySMEventsService = require('../../services/filterTxsBySMEventsService'),
   spawn = require('child_process').spawn,
   expect = require('chai').expect,
+  memwatch = require('memwatch-next'),
   Promise = require('bluebird');
 
 module.exports = (ctx) => {
@@ -64,7 +65,7 @@ module.exports = (ctx) => {
     }
   });
 
-  it('check filterTxsBySMEventsService function', async () => {
+  it('check filterTxsBySMEventsService function performance', async () => {
 
     ctx.contracts.WalletsManager.setProvider(ctx.web3.currentProvider);
     const walletsManager = await ctx.contracts.WalletsManager.deployed();
@@ -91,25 +92,25 @@ module.exports = (ctx) => {
 
     const tx = await Promise.promisify(ctx.web3.eth.getTransaction)(createWalletTx.tx);
     const receipt = await Promise.promisify(ctx.web3.eth.getTransactionReceipt)(createWalletTx.tx);
-    tx.logs = receipt.logs;
+    tx.logs = _.chain(new Array(1000))
+      .fill(0)
+      .map(()=>_.clone(receipt.logs[0]))
+      .value();
 
     const walletLog = _.find(createWalletTx.logs, {event: 'WalletCreated'});
     expect(walletLog).to.be.an('object');
 
-    const event = {
-      name: walletLog.event,
-      payload: walletLog.args
-    };
+    let hd = new memwatch.HeapDiff();
+    const start = Date.now();
 
+    filterTxsBySMEventsService(tx);
 
-    const filtered = filterTxsBySMEventsService(tx);
+    expect(Date.now() - start).to.be.below(1000);
 
-    let filteredEvent = _.find(filtered, {name: event.name});
-
-    expect(filtered.length).to.eq(tx.logs.length);
-    expect(_.isEqual(filteredEvent, event)).to.eq(true);
+    let diff = hd.end();
+    let leakObjects = _.filter(diff.change.details, detail => detail.size_bytes / 1024 / 1024 > 3);
+    expect(leakObjects.length).to.be.eq(0);
   });
-
 
 
   after(async () => {

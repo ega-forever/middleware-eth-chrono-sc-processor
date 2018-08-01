@@ -7,9 +7,6 @@
 /**
  * Middleware service for handling emitted events on chronobank platform
  * @module Chronobank/eth-chrono-sc-processor
- * @requires models/accountModel
- * @requires config
- * @requires services/filterTxsBySMEventsService
  */
 
 const config = require('./config'),
@@ -19,11 +16,11 @@ const config = require('./config'),
   smEvents = require('./factories/sc/smartContractsEventsFactory'),
   filterTxsBySMEventsService = require('./services/filterTxsBySMEventsService'),
   bunyan = require('bunyan'),
-  log = bunyan.createLogger({name: 'core.chronoSCProcessor'}),
+  log = bunyan.createLogger({name: 'plugins.chronoSCProcessor', level: config.logs.level}),
   amqp = require('amqplib');
 
 mongoose.Promise = Promise; // Use custom Promises
-mongoose.connect(config.mongo.data.uri, {useMongoClient: true});
+mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
 
 let init = async () => {
@@ -58,11 +55,12 @@ let init = async () => {
       if (!payload.blockNumber || payload.blockNumber === -1)
         return channel.ack(data);
 
-      let filteredEvents = await filterTxsBySMEventsService(payload);
+      let filteredEvents = filterTxsBySMEventsService(payload);
 
-      for (let event of filteredEvents)
+      for (let event of filteredEvents) {
+        log.info(`emitted event ${event.name} on transaction ${payload.hash}`);
         channel.publish('events', `${config.rabbit.serviceName}_chrono_sc.${event.name.toLowerCase()}`, new Buffer(JSON.stringify(event)));
-
+      }
     } catch (err) {
       log.error(err);
     }

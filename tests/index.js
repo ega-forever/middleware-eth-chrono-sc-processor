@@ -13,28 +13,25 @@ const config = require('../config'),
   requireAll = require('require-all'),
   fs = require('fs-extra'),
   spawn = require('child_process').spawn,
-  //fuzzTests = require('./fuzz'),
-  //performanceTests = require('./performance'),
+  fuzzTests = require('./fuzz'),
+  performanceTests = require('./performance'),
   featuresTests = require('./features'),
-  //blockTests = require('./blocks'),
+  blockTests = require('./blocks'),
   Promise = require('bluebird'),
   path = require('path'),
   Web3 = require('web3'),
   net = require('net'),
   dbPath = path.join(__dirname, 'utils/node/testrpc_db'),
-  flowsPath = path.join(__dirname, '../flows.json'),
   contractPath = path.join(__dirname, '../node_modules/chronobank-smart-contracts'),
   contractBuildPath = path.join(contractPath, 'build'),
   mongoose = require('mongoose'),
   amqp = require('amqplib'),
   ctx = {};
 
-mongoose.Promise = Promise;
-mongoose.data = mongoose.createConnection(config.mongo.data.uri);
-mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+mongoose.Promise = Promise; // Use custom Promises
+mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
-
-describe('core/2fa', function () {
+describe('plugins/chronoScProcessor', function () {
 
   before(async () => {
 
@@ -91,19 +88,18 @@ describe('core/2fa', function () {
 
   after(async () => {
     mongoose.disconnect();
-    mongoose.accounts.close();
     await ctx.amqp.instance.close();
     if (_.has(ctx.web3.currentProvider, 'connection.destroy'))
       ctx.web3.currentProvider.connection.destroy();
     ctx.nodePid.kill();
   });
 
-  //describe('block', () => blockTests(ctx));
+  describe('block', () => blockTests(ctx));
 
   describe('features', () => featuresTests(ctx));
 
-  //describe('performance', () => performanceTests(ctx));
+  describe('performance', () => performanceTests(ctx));
 
-  //describe('fuzz', () => fuzzTests(ctx));
+  describe('fuzz', () => fuzzTests(ctx));
 
 });

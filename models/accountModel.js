@@ -4,11 +4,8 @@
  * @author Egor Zuev <zyev.egor@gmail.com>
  */
 
-/**
- * Mongoose model. Accounts
- * @module models/accountModel
- * @returns {Object} Mongoose model
- * @requires factories/addressMessageFactory
+/** @model accountModel
+ *  @description account model - represents an bitcoin account
  */
 
 const mongoose = require('mongoose'),
