@@ -9,7 +9,6 @@ require('dotenv/config');
 const _ = require('lodash'),
   accountModel = require('../../models/accountModel'),
   config = require('../../config'),
-  smartContractsEventsFactory = require('../../factories/sc/smartContractsEventsFactory'),
   spawn = require('child_process').spawn,
   expect = require('chai').expect,
   Promise = require('bluebird');
@@ -22,8 +21,8 @@ module.exports = (ctx) => {
     await Promise.delay(5000);
   });
 
-  it('check that account has been created', async ()=>{
-    const isExist = await accountModel.count({address: smartContractsEventsFactory.address});
+  it('check that account has been created', async () => {
+    const isExist = await accountModel.count({address: ctx.scFactory.address});
     expect(isExist).to.eq(1);
   });
 
@@ -134,7 +133,6 @@ module.exports = (ctx) => {
       })()
     ]);
   });
-
 
 
   after(async () => {
