@@ -5,121 +5,101 @@
  */
 
 require('dotenv/config');
+process.env.LOG_LEVEL = 'error';
 
 const config = require('../config'),
+  _ = require('lodash'),
+  contract = require('truffle-contract'),
+  requireAll = require('require-all'),
+  fs = require('fs-extra'),
+  spawn = require('child_process').spawn,
+  fuzzTests = require('./fuzz'),
+  performanceTests = require('./performance'),
+  featuresTests = require('./features'),
+  blockTests = require('./blocks'),
+  Promise = require('bluebird'),
+  path = require('path'),
+  Web3 = require('web3'),
+  net = require('net'),
+  dbPath = path.join(__dirname, 'utils/node/testrpc_db'),
+  contractPath = path.join(__dirname, '../node_modules/chronobank-smart-contracts'),
+  contractBuildPath = path.join(contractPath, 'build'),
   mongoose = require('mongoose'),
-  Promise = require('bluebird');
+  amqp = require('amqplib'),
+  ctx = {};
 
 mongoose.Promise = Promise; // Use custom Promises
-mongoose.connect(config.mongo.data.uri, {useMongoClient: true});
-mongoose.accounts = mongoose.createConnection(config.mongo.accounts.uri);
+mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
-const expect = require('chai').expect,
-  awaitLastBlock = require('./helpers/awaitLastBlock'),
-  saveAccountForAddress = require('./helpers/saveAccountForAddress'),
-  clearQueues = require('./helpers/clearQueues'),
-  connectToQueue = require('./helpers/connectToQueue'),
-  consumeMessagesUntil = require('./helpers/consumeMessagesUntil'),
-  loadContracts = require('./helpers/loadContracts'),
-  executeAddCBE = require('./helpers/executeAddCBE'),
-  net = require('net'),
-  _ = require('lodash'),
-  Web3 = require('web3'),
-  web3 = new Web3(),
-  amqp = require('amqplib');
-
-let accounts, amqpInstance, ctx;
-
-describe('core/sc processor', function () {
+describe('plugins/chronoScProcessor', function () {
 
   before(async () => {
-    amqpInstance = await amqp.connect(config.rabbit.url);
-    await clearQueues(amqpInstance);
 
-    const provider = new Web3.providers.IpcProvider(config.web3.uri, net);
-    web3.setProvider(provider);
+    ctx.amqp = {};
+    ctx.amqp.instance = await amqp.connect(config.rabbit.url);
+    ctx.amqp.channel = await ctx.amqp.instance.createChannel();
+    await ctx.amqp.channel.assertExchange('events', 'topic', {durable: false});
 
-    ctx = await loadContracts(provider);
+    const isDbExist = fs.existsSync(dbPath);
 
-    accounts = await Promise.promisify(web3.eth.getAccounts)();
-    await saveAccountForAddress(accounts[0]);
+    ctx.nodePid = spawn('node', ['--max_old_space_size=4096', 'tests/utils/node/ipcConverter.js'], {env: process.env, stdio: 'inherit'});
+    await Promise.delay(5000);
 
-    return await awaitLastBlock(web3);
+    ctx.nodePid.on('exit', function (code, signal) {
+      console.log(`node has gone!`);
+      console.log(code, signal);
+      process.exit(1);
+    });
+
+
+    if (!fs.existsSync(contractBuildPath) || !isDbExist) {
+
+      await fs.remove(contractBuildPath);
+
+      const contractDeployPid = spawn('node', ['../truffle/build/cli.bundled.js', 'migrate'], {
+        env: process.env,
+        stdio: 'inherit',
+        cwd: 'node_modules/chronobank-smart-contracts'
+      });
+
+      await new Promise(res =>
+        contractDeployPid.on('exit', function (code, signal) {
+          console.log(`child process exited with code ${code} and signal ${signal}`);
+          res();
+        })
+      );
+    }
+
+    ctx.contracts = requireAll({
+      dirname: path.resolve(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
+      resolve: Contract => contract(Contract)
+    });
+
+
+    const web3ProviderUri = process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc';
+
+    const provider = /http:\/\//.test(web3ProviderUri) ?
+      new Web3.providers.HttpProvider(web3ProviderUri) :
+      new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${web3ProviderUri}`, net);
+
+    ctx.web3 = new Web3(provider);
+    ctx.accounts = await Promise.promisify(ctx.web3.eth.getAccounts)();
   });
 
-  after(() => {
-    web3.currentProvider.connection.end();
-    return mongoose.disconnect();
+  after(async () => {
+    mongoose.disconnect();
+    await ctx.amqp.instance.close();
+    if (_.has(ctx.web3.currentProvider, 'connection.destroy'))
+      ctx.web3.currentProvider.connection.destroy();
+    ctx.nodePid.kill();
   });
 
-  afterEach(async () => {
-    await clearQueues(amqpInstance);
-  });
+  describe('block', () => blockTests(ctx));
 
-  it('execute twoCBE and validate event in mongo and structure', async () => {
+  describe('features', () => featuresTests(ctx));
 
-    let smartTx, log;
+  describe('performance', () => performanceTests(ctx));
 
-    return await Promise.all([
-      (async () => {
-        smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
-        log = smartTx.logs[0];
-      })(),
-      (async () => {
-        const channel = await amqpInstance.createChannel();
-        await connectToQueue(channel);
-        await consumeMessagesUntil(channel, async (message, res) => {
-          let data = JSON.parse(message.content);
-          if (data.name === log.event) {
-            const controlIndexHash = `${log.logIndex}:${log.transactionHash}:${web3.sha3(config.web3.network)}`;
-            const mongoDoc = await ctx.smEvents.eventModels[log.event].findOne({controlIndexHash});
-            expect(mongoDoc).to.not.be.null;
-            expect(mongoDoc).to.be.an('object');
-            expect(mongoDoc.toObject()).to.contain.all.keys(_.merge(
-              _.keys(log.args), [
-                'network', 'created', 'controlIndexHash', '_id', '__v',
-              ]
-            ));
-            res();
-          }
-        });
-      })()
-    ]);
-
-  });
-
-  it('execute twoCBE and validate event in mongo and structure', async () => {
-
-    const checkPayload = (payload, log) => {
-      expect(payload).to.not.be.null;
-      expect(payload).to.be.an('object');
-      expect(payload).to.contain.all.keys([
-        'network', 'created', 'self'
-      ]);
-
-      expect(payload).to.contain.all.keys(_.keys(log.args));
-    };
-
-    let smartTx, log;
-
-    await Promise.all([
-      (async () => {
-        smartTx = await executeAddCBE(accounts[0], accounts[1], ctx.contracts);
-        log = smartTx.logs[0];
-      })(),
-      (async () => {
-        const channel = await amqpInstance.createChannel();
-        await connectToQueue(channel);
-        await consumeMessagesUntil(channel, async (message, res) => {
-          let data = JSON.parse(message.content);
-          if (data.name === log.event) {
-            checkPayload(data.payload, log);
-            res();
-          }
-        });
-      })()
-    ]);
-
-  });
+  describe('fuzz', () => fuzzTests(ctx));
 
 });

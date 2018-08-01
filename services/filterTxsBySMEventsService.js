@@ -4,27 +4,24 @@
  * @author Egor Zuev <zyev.egor@gmail.com>
  */
 
+const _ = require('lodash'),
+  smEvents = require('../factories/sc/smartContractsEventsFactory'),
+  solidityEvent = require('web3/lib/web3/event.js');
+
 /**
  * Filtering transactions by smart contract events
  *
  * @module services/filterTxsBySMEvents
- * @param {Object} tx Array of transactions
- * @param {Object} web3 Instance of Web3
- * @param {Object} multiAddress Instance of smart contract MultiAddress
- * @param {Object} smEvents Smart contract events
- * @returns {array} Array of filtered transactions
+ * @param {Object} tx - full eth transaction object (which is confirmed and includes logs)
+ * @returns {array} Array of decoded events, extracted from logs
  */
-
-const _ = require('lodash'),
-  solidityEvent = require('web3/lib/web3/event.js');
-
-module.exports = async (tx, web3, multiAddress, smEvents) => {
+module.exports = tx => {
 
   if (_.get(tx, 'logs', []).length === 0)
     return [];
 
   return _.chain(tx.logs)
-    .filter(log => multiAddress.address === log.address)
+    .filter(log => smEvents.address === log.address)
     .transform((result, ev) => {
 
       let signatureDefinition = smEvents.events[ev.topics[0]];
@@ -34,17 +31,11 @@ module.exports = async (tx, web3, multiAddress, smEvents) => {
       _.pullAt(ev, 0);
       let resultDecoded = new solidityEvent(null, signatureDefinition).decode(ev);
 
-      result.push(_.chain(resultDecoded)
-        .pick(['event', 'args'])
-        .merge({args: {controlIndexHash: `${ev.logIndex}:${ev.transactionHash}`}})
-        .thru(ev => ({
-          name: ev.event,
-          payload: new smEvents.eventModels[ev.event](ev.args)
-        })
-        )
-        .value()
-      );
+      result.push({
+        name: resultDecoded.event,
+        payload: ev.args
+      });
+
     }, [])
     .value();
-
 };
