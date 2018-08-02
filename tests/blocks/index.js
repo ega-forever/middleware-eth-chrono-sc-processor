@@ -7,7 +7,6 @@
 require('dotenv/config');
 
 const _ = require('lodash'),
-  filterTxsBySMEventsService = require('../../services/filterTxsBySMEventsService'),
   spawn = require('child_process').spawn,
   expect = require('chai').expect,
   Promise = require('bluebird');
@@ -66,7 +65,9 @@ module.exports = (ctx) => {
 
   it('check filterTxsBySMEventsService function', async () => {
 
-    ctx.contracts.WalletsManager.setProvider(ctx.web3.currentProvider);
+    const filterTxsBySMEventsService = require('../../services/filterTxsBySMEventsService'); //require inline because it has dep of smart contracts, which are unavailable on start
+
+      ctx.contracts.WalletsManager.setProvider(ctx.web3.currentProvider);
     const walletsManager = await ctx.contracts.WalletsManager.deployed();
     const walletCreationEstimateGasPrice = await walletsManager.create2FAWallet.estimateGas(0);
 

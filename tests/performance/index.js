@@ -7,7 +7,6 @@
 require('dotenv/config');
 
 const _ = require('lodash'),
-  filterTxsBySMEventsService = require('../../services/filterTxsBySMEventsService'),
   spawn = require('child_process').spawn,
   expect = require('chai').expect,
   memwatch = require('memwatch-next'),
@@ -67,6 +66,8 @@ module.exports = (ctx) => {
 
   it('check filterTxsBySMEventsService function performance', async () => {
 
+    const filterTxsBySMEventsService = require('../../services/filterTxsBySMEventsService');
+
     ctx.contracts.WalletsManager.setProvider(ctx.web3.currentProvider);
     const walletsManager = await ctx.contracts.WalletsManager.deployed();
     const walletCreationEstimateGasPrice = await walletsManager.create2FAWallet.estimateGas(0);
@@ -94,7 +95,7 @@ module.exports = (ctx) => {
     const receipt = await Promise.promisify(ctx.web3.eth.getTransactionReceipt)(createWalletTx.tx);
     tx.logs = _.chain(new Array(1000))
       .fill(0)
-      .map(()=>_.clone(receipt.logs[0]))
+      .map(() => _.clone(receipt.logs[0]))
       .value();
 
     const walletLog = _.find(createWalletTx.logs, {event: 'WalletCreated'});

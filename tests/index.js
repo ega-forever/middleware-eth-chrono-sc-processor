@@ -82,6 +82,7 @@ describe('plugins/chronoScProcessor', function () {
       new Web3.providers.HttpProvider(web3ProviderUri) :
       new Web3.providers.IpcProvider(`${/^win/.test(process.platform) ? '\\\\.\\pipe\\' : ''}${web3ProviderUri}`, net);
 
+    ctx.scFactory = require('../factories/sc/smartContractsEventsFactory');
     ctx.web3 = new Web3(provider);
     ctx.accounts = await Promise.promisify(ctx.web3.eth.getAccounts)();
   });
