@@ -63,6 +63,10 @@ The options are presented below:
 | SMART_CONTRACTS_EVENT_CONTRACT   | the smart contract, from which address events are emitted
 | SMART_CONTRACTS_NETWORK_ID   | the network id (1-mainnet, 4-rinkeby and so on)
 | LOG_LEVEL   | the logging level. Can be 'error' (which prints only errors) or 'info' (prints errors + info logs). Default is 'info' level
+| SYSTEM_RABBIT_URI   | rabbitmq URI connection string for infrastructure
+| SYSTEM_RABBIT_SERVICE_NAME   | rabbitmq service name for infrastructure
+| SYSTEM_RABBIT_EXCHANGE   | rabbitmq exchange name for infrastructure
+| CHECK_SYSTEM | check infrastructure or not (default = true)
 
 License
 ----
