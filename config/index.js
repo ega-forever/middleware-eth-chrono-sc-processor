@@ -24,6 +24,12 @@ const config = {
     url: process.env.RABBIT_URI || 'amqp://localhost:5672',
     serviceName: process.env.RABBIT_SERVICE_NAME || 'app_eth'
   },
+  systemRabbit: {
+    url: process.env.SYSTEM_RABBIT_URI || process.env.RABBIT_URI || 'amqp://localhost:5672',
+    exchange: process.env.SYSTEM_RABBIT_EXCHANGE || 'internal',
+    serviceName: process.env.SYSTEM_RABBIT_SERVICE_NAME || 'system' 
+  },
+  checkSystem: process.env.CHECK_SYSTEM ? parseInt(process.env.CHECK_SYSTEM) : true,
   smartContracts: {
     networkId: process.env.SMART_CONTRACTS_NETWORK_ID || '4',
     path: process.env.SMART_CONTRACTS_PATH || path.join(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),

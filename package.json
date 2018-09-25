@@ -2,9 +2,13 @@
   "name": "middleware_eth.chronoSCProcessor",
   "version": "1.0.0",
   "main": "index.js",
+  "requirements": {
+    "middleware_eth.blockProcessor": "1.0.0"
+  },
   "dependencies": {
     "amqplib": "^0.5.1",
     "middleware-common-components": "github:ChronoBank/middleware-common-components",
+    "middleware_common_infrastructure": "^1.0.2",
     "bluebird": "^3.5.0",
     "bunyan": "^1.8.10",
     "chronobank-smart-contracts": "1.1.*",

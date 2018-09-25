@@ -10,15 +10,14 @@ services:
   - rabbitmq
 
 before_install:
+  - export CHECK_SYSTEM=0
+  - export SMART_CONTRACTS_NETWORK_ID=86
   - mongo data --eval 'db.dropDatabase();'
   - sudo apt-get update
   - sudo apt-get install python2.7 git-all pkg-config libncurses5-dev libssl-dev libnss3-dev libexpat-dev libc6-dev -y
 
 install:
   - npm install
-
-before_script:
-    - export SMART_CONTRACTS_NETWORK_ID=86
 
 script:
   - npm test -- --coverage
