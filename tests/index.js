@@ -42,7 +42,10 @@ describe('plugins/chronoScProcessor', function () {
 
     const isDbExist = fs.existsSync(dbPath);
 
-    ctx.nodePid = spawn('node', ['--max_old_space_size=4096', 'tests/utils/node/ipcConverter.js'], {env: process.env, stdio: 'inherit'});
+    ctx.nodePid = spawn('node', ['--max_old_space_size=4096', 'tests/utils/node/ipcConverter.js'], {
+      env: process.env,
+      stdio: 'inherit'
+    });
     await Promise.delay(5000);
 
     ctx.nodePid.on('exit', function (code, signal) {
@@ -50,6 +53,18 @@ describe('plugins/chronoScProcessor', function () {
       console.log(code, signal);
       process.exit(1);
     });
+
+
+    ctx.checkerPid = spawn('node', ['tests/utils/proxyChecker.js'], {
+      env: process.env, stdio: 'ignore'
+    });
+
+
+    if (fs.existsSync(path.join(contractPath, 'migrations-dev-full'))) {
+      await fs.remove(contractBuildPath);
+      fs.removeSync(path.join(contractPath, 'migrations'));
+      fs.moveSync(path.join(contractPath, 'migrations-dev-full'), path.join(contractPath, 'migrations'), {});
+    }
 
 
     if (!fs.existsSync(contractBuildPath) || !isDbExist) {

@@ -114,7 +114,7 @@ module.exports = (ctx) => {
         await ctx.amqp.channel.publish('events', `${config.rabbit.serviceName}_transaction.${tx.logs[0].address}`, new Buffer(JSON.stringify(tx)));
       })(),
       (async () => {
-        await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.sc_processor`);
+        await ctx.amqp.channel.assertQueue(`app_${config.rabbit.serviceName}_test_features.sc_processor`, {autoDelete: true});
         await ctx.amqp.channel.bindQueue(`app_${config.rabbit.serviceName}_test_features.sc_processor`, 'events', `${config.rabbit.serviceName}_chrono_sc.*`);
         await new Promise(res =>
           ctx.amqp.channel.consume(`app_${config.rabbit.serviceName}_test_features.sc_processor`, async data => {
