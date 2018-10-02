@@ -16,14 +16,36 @@ const config = require('./config'),
   smEvents = require('./factories/sc/smartContractsEventsFactory'),
   filterTxsBySMEventsService = require('./services/filterTxsBySMEventsService'),
   bunyan = require('bunyan'),
+  AmqpService = require('middleware_common_infrastructure/AmqpService'),
+  InfrastructureInfo = require('middleware_common_infrastructure/InfrastructureInfo'),
+  InfrastructureService = require('middleware_common_infrastructure/InfrastructureService'),
   log = bunyan.createLogger({name: 'plugins.chronoSCProcessor', level: config.logs.level}),
   amqp = require('amqplib');
 
 mongoose.Promise = Promise; // Use custom Promises
 mongoose.connect(config.mongo.accounts.uri, {useMongoClient: true});
 
+const runSystem = async function () {
+  const rabbit = new AmqpService(
+    config.systemRabbit.url, 
+    config.systemRabbit.exchange,
+    config.systemRabbit.serviceName
+  );
+  const info = new InfrastructureInfo(require('./package.json'));
+  const system = new InfrastructureService(info, rabbit, {checkInterval: 10000});
+  await system.start();
+  system.on(system.REQUIREMENT_ERROR, (requirement, version) => {
+    log.error(`Not found requirement with name ${requirement.name} version=${requirement.version}.` +
+        ` Last version of this middleware=${version}`);
+    process.exit(1);
+  });
+  await system.checkRequirements();
+  system.periodicallyCheck();
+};
 
 let init = async () => {
+  if (config.checkSystem)
+    await runSystem();
 
   mongoose.connection.on('disconnected', () => {
     throw new Error('mongo disconnected!');

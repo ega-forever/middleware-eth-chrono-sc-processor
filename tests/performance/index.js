@@ -9,7 +9,6 @@ require('dotenv/config');
 const _ = require('lodash'),
   spawn = require('child_process').spawn,
   expect = require('chai').expect,
-  memwatch = require('memwatch-next'),
   Promise = require('bluebird');
 
 module.exports = (ctx) => {
@@ -101,16 +100,17 @@ module.exports = (ctx) => {
     const walletLog = _.find(createWalletTx.logs, {event: 'WalletCreated'});
     expect(walletLog).to.be.an('object');
 
-    let hd = new memwatch.HeapDiff();
+    const memUsage = process.memoryUsage().heapUsed / 1024 / 1024;
     const start = Date.now();
 
     filterTxsBySMEventsService(tx);
 
     expect(Date.now() - start).to.be.below(1000);
+    global.gc();
+    await Promise.delay(5000);
 
-    let diff = hd.end();
-    let leakObjects = _.filter(diff.change.details, detail => detail.size_bytes / 1024 / 1024 > 3);
-    expect(leakObjects.length).to.be.eq(0);
+    const memUsage2 = process.memoryUsage().heapUsed / 1024 / 1024;
+    expect(memUsage2 - memUsage).to.be.below(3);
   });
 
 

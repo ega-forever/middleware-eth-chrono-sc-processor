@@ -2,9 +2,13 @@
   "name": "middleware_eth.chronoSCProcessor",
   "version": "1.0.0",
   "main": "index.js",
+  "requirements": {
+    "middleware_eth.blockProcessor": "1.0.0"
+  },
   "dependencies": {
     "amqplib": "^0.5.1",
     "middleware-common-components": "github:ChronoBank/middleware-common-components",
+    "middleware_common_infrastructure": "github:ChronoBank/middleware-common-infrastructure.git",
     "bluebird": "^3.5.0",
     "bunyan": "^1.8.10",
     "chronobank-smart-contracts": "1.1.*",
@@ -19,7 +23,7 @@
   "scripts": {
     "lint": "node ./node_modules/eslint/bin/eslint.js -c .eslintrc.js --ext .js --fix --ignore-path .eslintignore .",
     "deploy:contracts": "cd ./node_modules/chronobank-smart-contracts && node --max_old_space_size=8000 ../truffle/build/cli.bundled.js migrate",
-    "test": "node ./node_modules/mocha/bin/mocha -t 6000000 tests/index.js"
+    "test": "node ./node_modules/mocha/bin/mocha -t 6000000 -gc tests/index.js"
   },
   "author": "chronobank",
   "license": "AGPL-3.0",
@@ -29,7 +33,7 @@
     "chai": "^4.1.1",
     "eslint": "^4.6.1",
     "eslint-plugin-chronobank": "github:chronobank/eslint-plugin-chronobank",
-    "memwatch-next": "^0.3.0",
+    "fs-extra": "^7.0.0",
     "mocha": "^3.5.0"
   }
 }
