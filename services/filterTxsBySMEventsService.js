@@ -6,7 +6,8 @@
 
 const _ = require('lodash'),
   smEvents = require('../factories/sc/smartContractsEventsFactory'),
-  solidityEvent = require('web3/lib/web3/event.js');
+  Web3 = require('web3');
+web3 = new Web3();
 
 /**
  * Filtering transactions by smart contract events
@@ -22,18 +23,26 @@ module.exports = tx => {
 
   return _.chain(tx.logs)
     .filter(log => smEvents.address === log.address)
-    .transform((result, ev) => {
+    .transform((result, log) => {
 
-      let signatureDefinition = smEvents.events[ev.topics[0]];
+      let signatureDefinition = smEvents.events[log.topics[0]];
       if (!signatureDefinition)
         return;
 
-      _.pullAt(ev, 0);
-      let resultDecoded = new solidityEvent(null, signatureDefinition).decode(ev);
+      if (log.anonymous)
+        _.pullAt(log.topics, 0);
+
+      let resultDecoded = web3.eth.abi.decodeLog(signatureDefinition, log.data, log.topics);
+
+      console.log(resultDecoded)
 
       result.push({
+        info: {
+          tx: tx.hash,
+          blockNumber: tx.blockNumber
+        },
         name: resultDecoded.event,
-        payload: ev.args
+        payload: log.args
       });
 
     }, [])

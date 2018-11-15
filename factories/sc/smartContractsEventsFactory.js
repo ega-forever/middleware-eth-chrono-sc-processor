@@ -5,9 +5,10 @@
  */
 
 const _ = require('lodash'),
-  contract = require('truffle-contract'),
   requireAll = require('require-all'),
   config = require('../../config'),
+  Web3 = require('web3'),
+  web3 = new Web3(),
   fs = require('fs');
 let contractsRaw = {};
 
@@ -19,35 +20,21 @@ if (fs.existsSync(config.smartContracts.path))
 
 const multiEventHistoryAddress = _.get(contractsRaw, `${config.smartContracts.eventContract}.networks.${config.smartContracts.networkId}.address`);
 
-let truffleContractEvents = _.chain(contractsRaw)
-  .toPairs()
-  .map(pair => contract(pair[1]).events)
-  .transform((result, ev) => _.merge(result, ev), {})
-  .toPairs()
-  .map(pair => {
-    let event = pair[1];
-    event.signature = pair[0];
-    return event;
-  })
-  .value();
 
-
-let rawContractEvents = _.chain(contractsRaw)
+const contractEvents = _.chain(contractsRaw)
   .map(contract =>
-    _.chain(contract.networks)
-      .values()
-      .map(network => network.events)
-      .flattenDeep()
-      .values()
-      .transform((result, item) => _.merge(result, item), {})
-      .toPairs()
-      .map(pair => {
-        pair[1].signature = pair[0];
-        return pair[1];
+    _.chain(contract.abi)
+      .filter({type: 'event'})
+      .map(ev => {
+        ev.signature = web3.utils.sha3(`${ev.name}(${ev.inputs.map(input => input.type).join(',')})`);
+        return ev;
       })
       .value()
   )
   .flattenDeep()
+  .uniqBy('signature')
+  .map(item=>[item.signature, item])
+  .fromPairs()
   .value();
 
 /**
@@ -56,12 +43,6 @@ let rawContractEvents = _.chain(contractsRaw)
  * @type {{events: *, address: *}}
  */
 module.exports = {
-  events: _.chain(truffleContractEvents)
-    .union(rawContractEvents)
-    .uniqBy('signature')
-    .transform((result, item)=>{
-      result[item.signature] = item;
-    }, {})
-    .value(),
+  events: contractEvents,
   address: multiEventHistoryAddress
 };

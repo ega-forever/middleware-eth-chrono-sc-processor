@@ -67,7 +67,7 @@ module.exports = (ctx) => {
 
     const filterTxsBySMEventsService = require('../../services/filterTxsBySMEventsService'); //require inline because it has dep of smart contracts, which are unavailable on start
 
-      ctx.contracts.WalletsManager.setProvider(ctx.web3.currentProvider);
+    ctx.contracts.WalletsManager.setProvider(ctx.web3.currentProvider);
     const walletsManager = await ctx.contracts.WalletsManager.deployed();
     const walletCreationEstimateGasPrice = await walletsManager.create2FAWallet.estimateGas(0);
 
@@ -98,6 +98,10 @@ module.exports = (ctx) => {
     expect(walletLog).to.be.an('object');
 
     const event = {
+      info: {
+        tx: tx.hash,
+        blockNumber: tx.blockNumber
+      },
       name: walletLog.event,
       payload: walletLog.args
     };
@@ -110,7 +114,6 @@ module.exports = (ctx) => {
     expect(filtered.length).to.eq(tx.logs.length);
     expect(_.isEqual(filteredEvent, event)).to.eq(true);
   });
-
 
 
   after(async () => {

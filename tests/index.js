@@ -112,10 +112,10 @@ describe('plugins/chronoScProcessor', function () {
 
   describe('block', () => blockTests(ctx));
 
-  describe('features', () => featuresTests(ctx));
+/*  describe('features', () => featuresTests(ctx));
 
   describe('performance', () => performanceTests(ctx));
 
-  describe('fuzz', () => fuzzTests(ctx));
+  describe('fuzz', () => fuzzTests(ctx));*/
 
 });

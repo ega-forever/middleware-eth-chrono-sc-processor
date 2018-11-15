@@ -97,6 +97,10 @@ module.exports = (ctx) => {
     expect(walletLog).to.be.an('object');
 
     const event = {
+      info: {
+        tx: tx.hash,
+        blockNumber: tx.blockNumber
+      },
       name: walletLog.event,
       payload: walletLog.args
     };
@@ -162,6 +166,10 @@ module.exports = (ctx) => {
     expect(walletLog).to.be.an('object');
 
     ctx.event = {
+      info: {
+        tx: tx.hash,
+        blockNumber: tx.blockNumber
+      },
       name: walletLog.event,
       payload: walletLog.args
     };
