@@ -44,5 +44,5 @@ const contractEvents = _.chain(contractsRaw)
  */
 module.exports = {
   events: contractEvents,
-  address: multiEventHistoryAddress
+  address: multiEventHistoryAddress.toLowerCase()
 };

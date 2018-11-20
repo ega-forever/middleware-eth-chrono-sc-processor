@@ -6,8 +6,8 @@
 
 const _ = require('lodash'),
   smEvents = require('../factories/sc/smartContractsEventsFactory'),
-  Web3 = require('web3');
-web3 = new Web3();
+  Web3 = require('web3'),
+  web3 = new Web3();
 
 /**
  * Filtering transactions by smart contract events
@@ -22,27 +22,37 @@ module.exports = tx => {
     return [];
 
   return _.chain(tx.logs)
-    .filter(log => smEvents.address === log.address)
+    .filter(log => smEvents.address === log.address.toLowerCase())
     .transform((result, log) => {
 
       let signatureDefinition = smEvents.events[log.topics[0]];
       if (!signatureDefinition)
         return;
 
-      if (log.anonymous)
+      if (!log.anonymous)
         _.pullAt(log.topics, 0);
 
-      let resultDecoded = web3.eth.abi.decodeLog(signatureDefinition, log.data, log.topics);
+      let resultDecoded = web3.eth.abi.decodeLog(signatureDefinition.inputs, log.data, log.topics);
 
-      console.log(resultDecoded)
+      resultDecoded = _.chain(resultDecoded)
+        .omit('__length__')
+        .toPairs()
+        .filter(pair => _.isNaN(parseInt(pair[0])))
+        .map(pair => {
+          if (_.isString(pair[1]))
+            pair[1] = pair[1].toLowerCase();
+          return pair;
+        })
+        .fromPairs()
+        .value();
 
       result.push({
         info: {
           tx: tx.hash,
           blockNumber: tx.blockNumber
         },
-        name: resultDecoded.event,
-        payload: log.args
+        name: signatureDefinition.name,
+        payload: resultDecoded
       });
 
     }, [])

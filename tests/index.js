@@ -9,7 +9,6 @@ process.env.LOG_LEVEL = 'error';
 
 const config = require('../config'),
   _ = require('lodash'),
-  contract = require('truffle-contract'),
   requireAll = require('require-all'),
   fs = require('fs-extra'),
   spawn = require('child_process').spawn,
@@ -85,12 +84,6 @@ describe('plugins/chronoScProcessor', function () {
       );
     }
 
-    ctx.contracts = requireAll({
-      dirname: path.resolve(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
-      resolve: Contract => contract(Contract)
-    });
-
-
     const web3ProviderUri = process.env.WEB3_TEST_URI || process.env.WEB3_URI || '/tmp/development/geth.ipc';
 
     const provider = /http:\/\//.test(web3ProviderUri) ?
@@ -99,7 +92,14 @@ describe('plugins/chronoScProcessor', function () {
 
     ctx.scFactory = require('../factories/sc/smartContractsEventsFactory');
     ctx.web3 = new Web3(provider);
-    ctx.accounts = await Promise.promisify(ctx.web3.eth.getAccounts)();
+
+
+    ctx.contracts = requireAll({
+      dirname: path.resolve(__dirname, '../node_modules/chronobank-smart-contracts/build/contracts'),
+      resolve: Contract => new ctx.web3.eth.Contract(Contract.abi, _.get(Contract, `networks.${config.smartContracts.networkId}.address`))
+    });
+
+    ctx.accounts = await ctx.web3.eth.getAccounts();
   });
 
   after(async () => {
@@ -112,10 +112,10 @@ describe('plugins/chronoScProcessor', function () {
 
   describe('block', () => blockTests(ctx));
 
-/*  describe('features', () => featuresTests(ctx));
+  describe('features', () => featuresTests(ctx));
 
   describe('performance', () => performanceTests(ctx));
 
-  describe('fuzz', () => fuzzTests(ctx));*/
+  describe('fuzz', () => fuzzTests(ctx));
 
 });

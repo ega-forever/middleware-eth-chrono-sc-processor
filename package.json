@@ -17,7 +17,6 @@
     "mongoose": "^4.11.11",
     "mongoose-long": "^0.1.1",
     "require-all": "^2.2.0",
-    "truffle-contract": "^2.0.0",
     "web3": "^1.0.0-beta.36"
   },
   "scripts": {
